@@ -231,6 +231,11 @@ class ChecksTask {
                         return true;
                     }
 
+                    if (magerun2Output.includes('Magento Core Commands cannot be loaded')) {
+                        config.settings.noMagentoCoreCommands = true;
+                        task.output = 'magerun2 found but Magento Core not loadable — DB commands work, Magento-native commands skipped';
+                    }
+
                     let installedMagerun2Version: any = magerun2Output.split(' ')[1];
                     task.output = `Found Magerun2 v${installedMagerun2Version}`;
 

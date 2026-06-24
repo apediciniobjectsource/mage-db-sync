@@ -110,6 +110,7 @@ export interface AppConfig {
         magerun2Command: string;
         magerun2CommandLocal: string;
         noLocalMagerun?: boolean;
+        noMagentoCoreCommands?: boolean;
         wpCommandLocal: string;
         databaseCommand: string;
         syncImageTypes: string[] | null;

@@ -287,8 +287,8 @@ class MagentoConfigureTask {
                     // This is faster than running 3 separate commands
                     const dbQuery = `DELETE FROM admin_user; ALTER TABLE admin_user AUTO_INCREMENT = 1;`;
                     
-                    if (config.settings.noLocalMagerun) {
-                        // mysql fallback: only run the SQL part; skip auth entries and admin:user:create
+                    if (config.settings.noLocalMagerun || config.settings.noMagentoCoreCommands) {
+                        // mysql/db-only fallback: only run the SQL part; skip auth entries and admin:user:create
                         await this.executeQuery(dbQuery, config);
                     } else {
                         // Run db query and auth entries in parallel
@@ -361,7 +361,7 @@ class MagentoConfigureTask {
             {
                 title: 'Creating a dummy customer on every website',
                 task: async (): Promise<void> => {
-                    if (config.settings.noLocalMagerun) return;
+                    if (config.settings.noLocalMagerun || config.settings.noMagentoCoreCommands) return;
                     // Create new dummy customers for all websites IN PARALLEL - MUCH faster!
                     // Get all websites
                     let allWebsites = await localhostMagentoRootExec(`${config.settings.magerun2CommandLocal} sys:website:list --format=json`, config);
@@ -409,7 +409,7 @@ class MagentoConfigureTask {
             {
                 title: 'Synchronizing module versions on localhost',
                 task: async (): Promise<void> => {
-                    if (config.settings.noLocalMagerun) return;
+                    if (config.settings.noLocalMagerun || config.settings.noMagentoCoreCommands) return;
                     // Downgrade module data in database
                     if (config.settings.isDdevActive) {
                         await localhostMagentoRootExec(`${config.settings.magerun2CommandLocal} sys:setup:downgrade-versions`, config, true);
@@ -510,7 +510,7 @@ class MagentoConfigureTask {
             {
                 title: 'Reindexing & flushing Magento caches',
                 task: async (): Promise<void> => {
-                    if (config.settings.noLocalMagerun) {
+                    if (config.settings.noLocalMagerun || config.settings.noMagentoCoreCommands) {
                         // Gather URLs via SQL
                         const { execFileSync } = require('child_process');
                         const magentoRoot = config.settings.nonInteractiveOptions?.localPath || config.settings.currentFolder || process.cwd();

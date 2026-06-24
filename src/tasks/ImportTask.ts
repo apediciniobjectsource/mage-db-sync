@@ -80,8 +80,9 @@ class ImportTask {
         sqlFilePath: string,
         sqlFileSize: number
     ): Promise<void> {
-        // Use raw mysql if magerun2 is not available locally
-        if (config.settings.noLocalMagerun) {
+        // Use raw mysql if magerun2 is unavailable, or if it runs via docker exec
+        // (docker exec can't access the SQL file on the Mac host)
+        if (config.settings.noLocalMagerun || config.settings.magerun2CommandLocal?.includes('docker exec')) {
             return this.importDatabaseMysql(task, config, sqlFilePath, sqlFileSize);
         }
 
