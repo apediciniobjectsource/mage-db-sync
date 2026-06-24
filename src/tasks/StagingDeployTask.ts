@@ -468,36 +468,94 @@ class StagingDeployTask {
 
         // ----------------------------------------------------------------
         // 5.5. Anonymize customer data on staging (when strip=anonymized)
+        // Uses direct SQL via db:query so no Magento core bootstrap needed.
         // ----------------------------------------------------------------
         if (config.settings.strip === 'anonymized') {
+            // Each entry: [display label, SQL statement]
+            const anonymizationQueries: Array<[string, string]> = [
+                [
+                    'customer_entity',
+                    `UPDATE customer_entity SET
+                        email      = CONCAT(MD5(email), '@example.com'),
+                        firstname  = CONCAT('First', entity_id),
+                        lastname   = CONCAT('Last', entity_id)`
+                ],
+                [
+                    'customer_address_entity',
+                    `UPDATE customer_address_entity SET
+                        firstname  = CONCAT('First', entity_id),
+                        lastname   = CONCAT('Last', entity_id),
+                        telephone  = '0000000000',
+                        street     = CONCAT('Street ', entity_id),
+                        city       = 'City',
+                        postcode   = '00000'`
+                ],
+                [
+                    'sales_order',
+                    `UPDATE sales_order SET
+                        customer_email      = CONCAT(MD5(IFNULL(customer_email, entity_id)), '@example.com'),
+                        customer_firstname  = CONCAT('First', entity_id),
+                        customer_lastname   = CONCAT('Last', entity_id)`
+                ],
+                [
+                    'sales_order_address',
+                    `UPDATE sales_order_address SET
+                        firstname  = CONCAT('First', entity_id),
+                        lastname   = CONCAT('Last', entity_id),
+                        email      = CONCAT(MD5(IFNULL(email, entity_id)), '@example.com'),
+                        telephone  = '0000000000',
+                        street     = CONCAT('Street ', entity_id),
+                        city       = 'City',
+                        postcode   = '00000'`
+                ],
+                [
+                    'quote',
+                    `UPDATE quote SET
+                        customer_email      = CONCAT(MD5(IFNULL(customer_email, entity_id)), '@example.com'),
+                        customer_firstname  = CONCAT('First', entity_id),
+                        customer_lastname   = CONCAT('Last', entity_id)`
+                ],
+                [
+                    'quote_address',
+                    `UPDATE quote_address SET
+                        firstname  = CONCAT('First', address_id),
+                        lastname   = CONCAT('Last', address_id),
+                        email      = CONCAT(MD5(IFNULL(email, address_id)), '@example.com'),
+                        telephone  = '0000000000',
+                        street     = CONCAT('Street ', address_id),
+                        city       = 'City',
+                        postcode   = '00000'`
+                ],
+            ];
+
             this.stagingTasks.push({
                 title: 'Anonymizing customer data on staging',
                 task: async (_ctx: any, task: any): Promise<void> => {
                     const logger = this.services.getLogger();
-                    task.output = 'Running magerun2 db:anonymize on staging...';
-                    logger.info('Starting db:anonymize on staging');
-
+                    logger.info('Starting SQL anonymization on staging');
                     const startTime = Date.now();
-                    const cmd = stagingMagerunCommand('db:anonymize -n', config);
-                    const result = await sshStaging.execCommand(cmd);
 
-                    if (result.code !== 0) {
-                        const msg = result.stderr || result.stdout || '';
-                        if (msg.includes('not defined') || msg.includes('not found')) {
-                            task.title = 'Anonymization skipped — db:anonymize not available in this magerun2 version';
-                            logger.warn('db:anonymize not available on staging magerun2', { stderr: msg });
-                            return;
-                        }
-                        throw UI.createError(
-                            `db:anonymize on staging failed\n` +
-                            `[TIP] Check that magerun2 supports db:anonymize on the staging server\n` +
-                            `Error: ${msg}`
+                    for (const [label, sql] of anonymizationQueries) {
+                        task.output = `Anonymizing ${label}...`;
+                        // Collapse whitespace and escape for shell single-quote wrapping
+                        const normalised = sql.replace(/\s+/g, ' ').trim();
+                        const cmd = stagingMagerunCommand(
+                            `db:query ${shellEscape(normalised)}`,
+                            config
                         );
+                        const result = await sshStaging.execCommand(cmd);
+                        if (result.code !== 0) {
+                            throw UI.createError(
+                                `Anonymization failed on table ${label}\n` +
+                                `Error: ${result.stderr || result.stdout}`
+                            );
+                        }
+                        logger.info(`Anonymized ${label}`);
                     }
 
                     const elapsed = Math.round((Date.now() - startTime) / 1000);
                     task.title = `Customer data anonymized on staging (${elapsed}s)`;
-                    logger.info('db:anonymize on staging complete', { elapsed });
+                    logger.info('SQL anonymization on staging complete', { elapsed });
                 }
             });
         }
