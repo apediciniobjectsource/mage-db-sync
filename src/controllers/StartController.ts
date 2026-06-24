@@ -244,6 +244,7 @@ class StartController extends MainController {
 
         this.config.databases.databaseData = sourceDatabaseData;
         this.config.databases.databaseType = 'production';
+        this.config.databases.databaseKey = sourceHost;
 
         if (opts.sshKey) {
             this.config.customConfig.sshKeyLocation = opts.sshKey;

@@ -129,6 +129,7 @@ export interface AppConfig {
     databases: {
         databasesList: DatabaseListItem[] | null;
         databaseType: string | null;
+        databaseKey?: string | null;
         databaseData: DatabaseConfig | null;
         stagingDatabaseData?: DatabaseConfig | null;
         stagingDatabaseKey?: string | null;
