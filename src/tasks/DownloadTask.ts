@@ -1240,7 +1240,8 @@ class DownloadTask {
                 const logger = this.services.getLogger();
 
                 // Clean up Magento database (use the filename stored during dump)
-                if (config.databaseFileName) {
+                // Skip for remote staging sync — StagingDeployTask needs the file; it will clean up
+                if (config.databaseFileName && !config.settings.remoteStagingSync) {
                     logger.info('Cleaning up database file on server', { file: config.databaseFileName });
                     await ssh.execCommand(`rm -f ~/${config.databaseFileName}`);
                 }

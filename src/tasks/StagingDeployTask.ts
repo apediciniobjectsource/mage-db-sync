@@ -340,7 +340,8 @@ class StagingDeployTask {
                 const prodHost = shellEscape(prodDb.server);
                 const stagingUser = shellEscape(stagingDb.username);
                 const stagingHost = shellEscape(stagingDb.server);
-                const escapedFile = shellEscape(`~/${dumpFileName}`);
+                // Keep ~/ unquoted so the remote shell expands home dir
+                const escapedFile = `~/${shellEscape(dumpFileName)}`;
 
                 // Build: ssh [prod] "cat ~/file" | ssh [staging] "cat > ~/file"
                 let prodSshCmd = `ssh ${prodFlags} ${prodUser}@${prodHost} "cat ${escapedFile}"`;
@@ -429,8 +430,8 @@ class StagingDeployTask {
                 const dumpFileName = config.databaseFileName;
                 const isGzip = dumpFileName && dumpFileName.endsWith('.gz');
 
-                // Build: magerun2 db:import --compression=gzip --drop --force --skip-authorization-entry-creation ~/file
-                let importCmd = `db:import ${shellEscape(`~/${dumpFileName}`)}`;
+                // Keep ~/ outside quotes so the shell expands it; only escape the filename part
+                let importCmd = `db:import ~/${shellEscape(dumpFileName)}`;
                 if (isGzip) {
                     importCmd += ' --compression=gzip';
                 } else {
@@ -476,10 +477,16 @@ class StagingDeployTask {
                     const result = await sshStaging.execCommand(cmd);
 
                     if (result.code !== 0) {
+                        const msg = result.stderr || result.stdout || '';
+                        if (msg.includes('not defined') || msg.includes('not found')) {
+                            task.title = 'Anonymization skipped — db:anonymize not available in this magerun2 version';
+                            logger.warn('db:anonymize not available on staging magerun2', { stderr: msg });
+                            return;
+                        }
                         throw UI.createError(
                             `db:anonymize on staging failed\n` +
                             `[TIP] Check that magerun2 supports db:anonymize on the staging server\n` +
-                            `Error: ${result.stderr || result.stdout}`
+                            `Error: ${msg}`
                         );
                     }
 
