@@ -455,6 +455,10 @@ class DownloadTask {
                                 customTables: customTables
                             });
                         }
+                    } else if (config.settings.strip === 'anonymized') {
+                        // FULL dump with PII anonymised - keeps all rows, scrambles customer data
+                        stripOptions = '--strip="@anonymize"';
+                        logger.info('Using anonymized database dump (full rows, PII replaced)');
                     } else if (config.settings.strip === 'full and human readable') {
                         // FULL dump with human-readable format - NO stripping
                         stripOptions = '';

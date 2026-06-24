@@ -126,7 +126,7 @@ class ConfigurationQuestions {
                     name: 'strip',
                     default: 'stripped',
                     message: 'Select a preset configuration:',
-                    choices: ['stripped', 'keep customer data', 'full', 'full and human readable'],
+                    choices: ['stripped', 'keep customer data', 'anonymized', 'full', 'full and human readable'],
                     when: (answers: any) => answers.stripMode === 'preset'
                 },
                 {

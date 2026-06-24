@@ -165,7 +165,7 @@ export interface NonInteractiveOptions {
     nonInteractive?: boolean;
     databaseType?: 'staging' | 'production';
     database?: string;
-    strip?: 'stripped' | 'keep customer data' | 'full' | 'full and human readable' | 'none';
+    strip?: 'stripped' | 'keep customer data' | 'full' | 'full and human readable' | 'anonymized' | 'none';
     import?: 'yes' | 'no';
     syncTypes?: string[];
     target?: 'local' | 'staging';
@@ -182,5 +182,5 @@ export interface NonInteractiveOptions {
 }
 
 export type DatabaseType = 'staging' | 'production';
-export type StripType = 'development' | 'keep customer data' | 'full and human readable' | 'staging' | 'full';
+export type StripType = 'development' | 'keep customer data' | 'full and human readable' | 'staging' | 'full' | 'anonymized';
 export type SyncType = 'media' | 'pub/media' | 'var/import';
