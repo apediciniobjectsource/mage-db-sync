@@ -16,6 +16,7 @@ class MainController {
         {
             concurrent: false,
             exitOnError: true,
+            renderer: process.stdout.isTTY ? 'default' : 'verbose',
             rendererOptions: {
                 collapseErrors: false
             }
