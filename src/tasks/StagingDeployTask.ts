@@ -506,7 +506,7 @@ class StagingDeployTask {
                 logger.info('Removed dump from staging', { file: dumpFileName });
 
                 // Attempt to remove from prod (connection may already be closed by DownloadTask cleanup)
-                if (sshProd && sshProd.isConnected && sshProd.isConnected()) {
+                if (sshProd && typeof sshProd.isConnected === 'function' && sshProd.isConnected()) {
                     task.output = `Removing ${dumpFileName} from prod...`;
                     try {
                         await sshProd.execCommand(`rm -f ~/${shellEscape(dumpFileName)}`);

@@ -294,6 +294,22 @@ class StartController extends MainController {
         await downloadTask.configure(this.list, this.config, this.ssh, this.sshSecondDatabase);
 
         if (this.config.settings.remoteStagingSync) {
+            // Guard: refuse to sync if source and staging resolve to the same server+path,
+            // regardless of whether params came from inline flags or config files.
+            const prod = this.config.databases.databaseData;
+            const staging = this.config.databases.stagingDatabaseData;
+            if (
+                prod && staging &&
+                prod.server === staging.server &&
+                prod.username === staging.username &&
+                (prod.externalProjectFolder || '') === (staging.externalProjectFolder || '')
+            ) {
+                throw new Error(
+                    'Source and staging point to the same server and path — ' +
+                    'refusing to sync onto itself.'
+                );
+            }
+
             // Remote staging sync: transfer + import + configure on staging server via SSH
             const stagingDeployTask = this.taskFactory.createStagingDeployTask();
             await stagingDeployTask.configure(this.list, this.config, this.ssh, this.sshSecondDatabase);
