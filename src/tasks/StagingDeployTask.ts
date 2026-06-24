@@ -260,6 +260,42 @@ class StagingDeployTask {
         });
 
         // ----------------------------------------------------------------
+        // 2.5. Backup current staging DB (only when --backup is set)
+        // ----------------------------------------------------------------
+        if (config.settings.nonInteractiveOptions?.backup) {
+            this.stagingTasks.push({
+                title: 'Backing up current staging database',
+                task: async (_ctx: any, task: any): Promise<void> => {
+                    const logger = this.services.getLogger();
+                    const ts = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);
+                    const backupFile = `staging-backup-${ts}.sql.gz`;
+                    config.settings.stagingBackupFile = backupFile;
+
+                    task.output = `Dumping staging database to ~/${backupFile}...`;
+                    logger.info('Starting staging database backup', { file: backupFile });
+
+                    const startTime = Date.now();
+                    const cmd = stagingMagerunCommand(
+                        `db:dump --stdout -n --no-tablespaces | gzip -1 > ~/${shellEscape(backupFile)}`,
+                        config
+                    );
+                    const result = await sshStaging.execCommand(cmd);
+
+                    if (result.code !== 0) {
+                        throw UI.createError(
+                            `Staging database backup failed\n` +
+                            `Error: ${result.stderr || result.stdout}`
+                        );
+                    }
+
+                    const elapsed = Math.round((Date.now() - startTime) / 1000);
+                    task.title = `Staging database backed up → ~/${backupFile} (${elapsed}s)`;
+                    logger.info('Staging backup complete', { file: backupFile, elapsed });
+                }
+            });
+        }
+
+        // ----------------------------------------------------------------
         // 3. Transfer dump from prod → staging via local pipe
         // ----------------------------------------------------------------
         this.stagingTasks.push({

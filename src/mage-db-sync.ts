@@ -151,6 +151,7 @@ async function main() {
             .option('--target-port <n>', 'SSH port for target (default: 22)', parseInt)
             .option('--local-path <path>', 'Local Magento root path (for --target=local inline mode)')
             .option('--local-magerun2 <cmd>', 'Override local magerun2 command (e.g. "docker exec mycontainer magerun2")')
+            .option('--backup', 'Dump the target database before overwriting it')
             .action(async (cmdOptions) => {
                 const opts: NonInteractiveOptions = {};
 
@@ -209,6 +210,9 @@ async function main() {
                 }
                 if (cmdOptions.localMagerun2) {
                     opts.localMagerun2 = cmdOptions.localMagerun2;
+                }
+                if (cmdOptions.backup) {
+                    opts.backup = true;
                 }
 
                 // Self-sync guard for inline mode

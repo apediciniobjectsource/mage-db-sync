@@ -182,6 +182,7 @@ export interface NonInteractiveOptions {
     targetPort?: number;
     localPath?: string;
     localMagerun2?: string;
+    backup?: boolean;
 }
 
 export type DatabaseType = 'staging' | 'production';
