@@ -113,6 +113,8 @@ export interface AppConfig {
         databaseCommand: string;
         syncImageTypes: string[] | null;
         syncTypes: string[] | null;
+        remoteStagingSync?: boolean;
+        nonInteractiveOptions?: NonInteractiveOptions;
     };
     finalMessages: {
         magentoDatabaseLocation: string;
@@ -128,6 +130,8 @@ export interface AppConfig {
         databasesList: DatabaseListItem[] | null;
         databaseType: string | null;
         databaseData: DatabaseConfig | null;
+        stagingDatabaseData?: DatabaseConfig | null;
+        stagingDatabaseKey?: string | null;
     };
     wordpressConfig: {
         prefix: string;
@@ -156,6 +160,17 @@ export interface CommandResult {
     exitCode: number;
 }
 
+export interface NonInteractiveOptions {
+    nonInteractive?: boolean;
+    databaseType?: 'staging' | 'production';
+    database?: string;
+    strip?: 'stripped' | 'keep customer data' | 'full' | 'full and human readable' | 'none';
+    import?: 'yes' | 'no';
+    syncTypes?: string[];
+    target?: 'local' | 'staging';
+    stagingBaseUrl?: string;
+}
+
 export type DatabaseType = 'staging' | 'production';
-export type StripType = 'development' | 'keep customer data' | 'full and human readable' | 'staging';
+export type StripType = 'development' | 'keep customer data' | 'full and human readable' | 'staging' | 'full';
 export type SyncType = 'media' | 'pub/media' | 'var/import';

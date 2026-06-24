@@ -9,6 +9,7 @@ import DownloadTypesQuestion from '../questions/DownloadTypesQuestion';
 import { UI } from '../utils/UI';
 import { SSHConnectionPool } from '../utils/Performance';
 import { TaskFactory } from '../core/TaskFactory';
+import { NonInteractiveOptions } from '../types';
 
 class StartController extends MainController {
     private taskFactory: TaskFactory;
@@ -18,13 +19,19 @@ class StartController extends MainController {
         super.init(); // Initialize parent config
         this.taskFactory = TaskFactory.getInstance();
     }
-    public async execute(): Promise<void> {
-        return this.executeStart();
+    public async execute(opts?: NonInteractiveOptions): Promise<void> {
+        return this.executeStart(opts);
     }
 
-    executeStart = async (): Promise<void> => {
+    executeStart = async (opts?: NonInteractiveOptions): Promise<void> => {
         try {
-            await this.askQuestions();
+            this.config.settings.nonInteractiveOptions = opts;
+
+            if (opts?.target === 'staging') {
+                this.config.settings.remoteStagingSync = true;
+            }
+
+            await this.askQuestions(opts);
             await this.prepareTasks();
 
             this.showTaskSummary();
@@ -171,21 +178,33 @@ class StartController extends MainController {
         });
     }
 
-    askQuestions = async () => {
+    askQuestions = async (opts?: NonInteractiveOptions) => {
         UI.section('Configuration');
 
         const databaseTypeQuestion = await new DatabaseTypeQuestion();
-        await databaseTypeQuestion.configure(this.config);
+        await databaseTypeQuestion.configure(this.config, opts);
 
         const selectDatabaseQuestion = await new SelectDatabaseQuestion();
-        await selectDatabaseQuestion.configure(this.config);
+        await selectDatabaseQuestion.configure(this.config, opts);
 
+        // If remote staging sync is requested, load the staging DB config via stagingUsername
+        if (this.config.settings.remoteStagingSync) {
+            const stagingKey = this.config.databases.databaseData?.stagingUsername;
+            if (!stagingKey) {
+                throw new Error(
+                    `Remote staging sync requires a "stagingUsername" entry in the selected production database config.\n` +
+                    `Add it to your production.json pointing at the matching key in staging.json.`
+                );
+            }
+            const databasesModel = new (await import('../models/DatabasesModel')).default();
+            databasesModel.collectStagingDatabaseData(stagingKey, this.config);
+        }
 
         const downloadTypesQuestion = await new DownloadTypesQuestion();
-        await downloadTypesQuestion.configure(this.config);
+        await downloadTypesQuestion.configure(this.config, opts);
 
         const configurationQuestions = await new ConfigurationQuestions();
-        await configurationQuestions.configure(this.config);
+        await configurationQuestions.configure(this.config, opts);
     };
 
     prepareTasks = async () => {
@@ -202,15 +221,21 @@ class StartController extends MainController {
         const downloadTask = this.taskFactory.createDownloadTask();
         await downloadTask.configure(this.list, this.config, this.ssh, this.sshSecondDatabase);
 
-        if (this.config.settings.import === 'yes') {
-            const importTask = this.taskFactory.createImportTask();
-            await importTask.configure(this.list, this.config);
-        }
+        if (this.config.settings.remoteStagingSync) {
+            // Remote staging sync: transfer + import + configure on staging server via SSH
+            const stagingDeployTask = this.taskFactory.createStagingDeployTask();
+            await stagingDeployTask.configure(this.list, this.config, this.ssh, this.sshSecondDatabase);
+        } else {
+            // Local import flow
+            if (this.config.settings.import === 'yes') {
+                const importTask = this.taskFactory.createImportTask();
+                await importTask.configure(this.list, this.config);
+            }
 
-
-        if (this.config.settings.import === 'yes') {
-            const magentoConfigureTask = this.taskFactory.createMagentoConfigureTask();
-            await magentoConfigureTask.configure(this.list, this.config);
+            if (this.config.settings.import === 'yes') {
+                const magentoConfigureTask = this.taskFactory.createMagentoConfigureTask();
+                await magentoConfigureTask.configure(this.list, this.config);
+            }
         }
 
         if (this.config.settings.wordpressImport === 'yes') {

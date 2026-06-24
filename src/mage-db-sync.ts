@@ -13,6 +13,7 @@ import { ServiceContainer } from './core/ServiceContainer';
 import { ConfigInitializer } from './utils/ConfigInitializer';
 import { ConfigPathResolver } from './utils/ConfigPathResolver';
 import {UI} from "./utils/UI";
+import { NonInteractiveOptions } from './types';
 
 // Remove warning listeners
 process.removeAllListeners('warning');
@@ -132,9 +133,55 @@ async function main() {
         program
             .command('start')
             .description('Start database synchronization')
-            .action(async () => {
+            .option('-y, --non-interactive', 'Skip all prompts; fail if required flags are missing')
+            .option('--database-type <type>', 'Database type: staging | production')
+            .option('--database <key>', 'Exact key from databases JSON config')
+            .option('--strip <mode>', 'Strip mode: stripped | "keep customer data" | full | "full and human readable" | none')
+            .option('--import <yes|no>', 'Whether to import the DB locally after download')
+            .option('--no-import', 'Shorthand for --import=no')
+            .option('--sync-types <types>', 'Comma-separated sync types: "Magento database,media" etc.')
+            .option('--target <target>', 'Target: local | staging (default: local)')
+            .option('--staging-base-url <url>', 'Base URL to set on staging after import (optional)')
+            .action(async (cmdOptions) => {
+                const opts: NonInteractiveOptions = {};
+
+                if (cmdOptions.nonInteractive) {
+                    opts.nonInteractive = true;
+                }
+                if (cmdOptions.databaseType) {
+                    opts.databaseType = cmdOptions.databaseType as 'staging' | 'production';
+                }
+                if (cmdOptions.database) {
+                    opts.database = cmdOptions.database;
+                }
+                if (cmdOptions.strip) {
+                    opts.strip = cmdOptions.strip as NonInteractiveOptions['strip'];
+                }
+                // --no-import sets cmdOptions.import to false; explicit --import <yes|no> gives a string
+                if (cmdOptions.import === false) {
+                    opts.import = 'no';
+                } else if (typeof cmdOptions.import === 'string') {
+                    opts.import = cmdOptions.import as 'yes' | 'no';
+                }
+                if (cmdOptions.syncTypes) {
+                    opts.syncTypes = (cmdOptions.syncTypes as string).split(',').map((s: string) => s.trim());
+                }
+                if (cmdOptions.target) {
+                    opts.target = cmdOptions.target as 'local' | 'staging';
+                }
+                if (cmdOptions.stagingBaseUrl) {
+                    opts.stagingBaseUrl = cmdOptions.stagingBaseUrl;
+                }
+
+                if (opts.nonInteractive) {
+                    if (!opts.databaseType || !opts.database) {
+                        error('--non-interactive requires both --database-type and --database to be set.');
+                        process.exit(1);
+                    }
+                }
+
                 const controller = new StartController();
-                await controller.execute();
+                await controller.execute(opts);
             });
 
         // Open folder command
