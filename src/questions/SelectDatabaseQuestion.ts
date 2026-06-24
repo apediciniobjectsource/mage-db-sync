@@ -13,6 +13,11 @@ class SelectDatabaseQuestion {
     private questions: any[] = [];
 
     configure = async (config: any, opts?: NonInteractiveOptions) => {
+        // Inline mode: source/target were already applied by StartController.applyInlineParams
+        if (opts?.inlineMode) {
+            return;
+        }
+
         if (opts?.database) {
             await this.applySelection(config, opts.database);
             return;

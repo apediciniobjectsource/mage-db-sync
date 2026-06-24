@@ -169,6 +169,15 @@ export interface NonInteractiveOptions {
     syncTypes?: string[];
     target?: 'local' | 'staging';
     stagingBaseUrl?: string;
+    inlineMode?: boolean;
+    sourceSsh?: string;
+    sourcePath?: string;
+    sourcePort?: number;
+    sshKey?: string;
+    targetSsh?: string;
+    targetPath?: string;
+    targetPort?: number;
+    localPath?: string;
 }
 
 export type DatabaseType = 'staging' | 'production';

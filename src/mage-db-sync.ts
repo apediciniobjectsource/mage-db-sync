@@ -142,6 +142,14 @@ async function main() {
             .option('--sync-types <types>', 'Comma-separated sync types: "Magento database,media" etc.')
             .option('--target <target>', 'Target: local | staging (default: local)')
             .option('--staging-base-url <url>', 'Base URL to set on staging after import (optional)')
+            .option('--source-ssh <user@host>', 'SSH login for source server (skips config file lookup)')
+            .option('--source-path <path>', 'Absolute Magento root path on source server')
+            .option('--source-port <n>', 'SSH port for source (default: 22)', parseInt)
+            .option('--ssh-key <path>', 'SSH private key path (applies to both source and target)')
+            .option('--target-ssh <user@host>', 'SSH login for remote staging target')
+            .option('--target-path <path>', 'Absolute Magento root path on staging target')
+            .option('--target-port <n>', 'SSH port for target (default: 22)', parseInt)
+            .option('--local-path <path>', 'Local Magento root path (for --target=local inline mode)')
             .action(async (cmdOptions) => {
                 const opts: NonInteractiveOptions = {};
 
@@ -172,8 +180,42 @@ async function main() {
                 if (cmdOptions.stagingBaseUrl) {
                     opts.stagingBaseUrl = cmdOptions.stagingBaseUrl;
                 }
+                if (cmdOptions.sourceSsh) {
+                    opts.sourceSsh = cmdOptions.sourceSsh;
+                    opts.inlineMode = true;
+                    opts.nonInteractive = true;
+                }
+                if (cmdOptions.sourcePath) {
+                    opts.sourcePath = cmdOptions.sourcePath;
+                }
+                if (cmdOptions.sourcePort) {
+                    opts.sourcePort = cmdOptions.sourcePort;
+                }
+                if (cmdOptions.sshKey) {
+                    opts.sshKey = cmdOptions.sshKey;
+                }
+                if (cmdOptions.targetSsh) {
+                    opts.targetSsh = cmdOptions.targetSsh;
+                }
+                if (cmdOptions.targetPath) {
+                    opts.targetPath = cmdOptions.targetPath;
+                }
+                if (cmdOptions.targetPort) {
+                    opts.targetPort = cmdOptions.targetPort;
+                }
+                if (cmdOptions.localPath) {
+                    opts.localPath = cmdOptions.localPath;
+                }
 
-                if (opts.nonInteractive) {
+                // Self-sync guard for inline mode
+                if (opts.inlineMode && opts.sourceSsh && opts.targetSsh) {
+                    if (opts.sourceSsh === opts.targetSsh && opts.sourcePath === opts.targetPath) {
+                        error('Source and target are identical — refusing to sync a server to itself.');
+                        process.exit(1);
+                    }
+                }
+
+                if (opts.nonInteractive && !opts.inlineMode) {
                     if (!opts.databaseType || !opts.database) {
                         error('--non-interactive requires both --database-type and --database to be set.');
                         process.exit(1);

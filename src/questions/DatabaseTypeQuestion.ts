@@ -8,6 +8,11 @@ class DatabaseTypeQuestion {
     private questions: any[] = [];
 
     configure = async (config: any, opts?: NonInteractiveOptions) => {
+        // Inline mode: source/target were already applied by StartController.applyInlineParams
+        if (opts?.inlineMode) {
+            return;
+        }
+
         // Non-interactive: use provided database type directly
         if (opts?.databaseType) {
             config.databases.databaseType = opts.databaseType;
