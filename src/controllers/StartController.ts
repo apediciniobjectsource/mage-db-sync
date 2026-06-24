@@ -250,6 +250,10 @@ class StartController extends MainController {
             this.config.customConfig.sshKeyLocation = opts.sshKey;
         }
 
+        if (opts.localMagerun2) {
+            this.config.settings.magerun2CommandLocal = opts.localMagerun2;
+        }
+
         if (opts.target === 'staging' && opts.targetSsh) {
             const targetAtIndex = opts.targetSsh.indexOf('@');
             if (targetAtIndex === -1) {

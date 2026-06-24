@@ -109,6 +109,7 @@ export interface AppConfig {
         runCommands: boolean;
         magerun2Command: string;
         magerun2CommandLocal: string;
+        noLocalMagerun?: boolean;
         wpCommandLocal: string;
         databaseCommand: string;
         syncImageTypes: string[] | null;
@@ -179,6 +180,7 @@ export interface NonInteractiveOptions {
     targetPath?: string;
     targetPort?: number;
     localPath?: string;
+    localMagerun2?: string;
 }
 
 export type DatabaseType = 'staging' | 'production';

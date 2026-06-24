@@ -150,6 +150,7 @@ async function main() {
             .option('--target-path <path>', 'Absolute Magento root path on staging target')
             .option('--target-port <n>', 'SSH port for target (default: 22)', parseInt)
             .option('--local-path <path>', 'Local Magento root path (for --target=local inline mode)')
+            .option('--local-magerun2 <cmd>', 'Override local magerun2 command (e.g. "docker exec mycontainer magerun2")')
             .action(async (cmdOptions) => {
                 const opts: NonInteractiveOptions = {};
 
@@ -205,6 +206,9 @@ async function main() {
                 }
                 if (cmdOptions.localPath) {
                     opts.localPath = cmdOptions.localPath;
+                }
+                if (cmdOptions.localMagerun2) {
+                    opts.localMagerun2 = cmdOptions.localMagerun2;
                 }
 
                 // Self-sync guard for inline mode
