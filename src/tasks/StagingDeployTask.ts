@@ -17,8 +17,16 @@ import { SSHConnectionPool } from '../utils/Performance';
 import { UI } from '../utils/UI';
 import { ServiceContainer } from '../core/ServiceContainer';
 import fs from 'fs';
+import os from 'os';
 import chalk from 'chalk';
 import { spawn } from 'child_process';
+
+function expandHome(p: string): string {
+    if (!p) return p;
+    if (p === '~') return os.homedir();
+    if (p.startsWith('~/')) return os.homedir() + p.slice(1);
+    return p;
+}
 
 interface TaskItem {
     title: string;
@@ -90,8 +98,9 @@ class StagingDeployTask {
             databaseConfig.sshKeyLocation ||
             customConfig.sshKeyLocation;
 
-        if (keyLocation && fs.existsSync(keyLocation)) {
-            sshConfig.privateKey = fs.readFileSync(keyLocation, 'utf8');
+        const expandedKey = expandHome(keyLocation);
+        if (expandedKey && fs.existsSync(expandedKey)) {
+            sshConfig.privateKey = fs.readFileSync(expandedKey, 'utf8');
             if (customConfig.sshPassphrase) {
                 sshConfig.passphrase = customConfig.sshPassphrase;
             }
@@ -112,8 +121,9 @@ class StagingDeployTask {
             ? `-p ${port} -o StrictHostKeyChecking=no -o BatchMode=yes`
             : `-o StrictHostKeyChecking=no -o BatchMode=yes`;
 
-        if (keyLocation && fs.existsSync(keyLocation)) {
-            flags += ` -i ${shellEscape(keyLocation)}`;
+        const expandedKey = expandHome(keyLocation);
+        if (expandedKey && fs.existsSync(expandedKey)) {
+            flags += ` -i ${shellEscape(expandedKey)}`;
         }
 
         return flags;
@@ -314,6 +324,15 @@ class StagingDeployTask {
                 const prodDb = config.databases.databaseData;
                 const stagingDb = config.databases.stagingDatabaseData;
 
+                // Same server/user: file is already at ~/dumpFileName — no transfer needed
+                if (prodDb.server === stagingDb.server && prodDb.username === stagingDb.username) {
+                    task.title = `Dump already on staging server (same host as production)`;
+                    logger.info('Skipping transfer — prod and staging share the same host/user', {
+                        host: prodDb.server
+                    });
+                    return;
+                }
+
                 const prodFlags = this.buildSshFlags(prodDb, config.customConfig);
                 const stagingFlags = this.buildSshFlags(stagingDb, config.customConfig);
 
@@ -440,6 +459,36 @@ class StagingDeployTask {
                 logger.info('Staging database import complete', { elapsed });
             }
         });
+
+        // ----------------------------------------------------------------
+        // 5.5. Anonymize customer data on staging (when strip=anonymized)
+        // ----------------------------------------------------------------
+        if (config.settings.strip === 'anonymized') {
+            this.stagingTasks.push({
+                title: 'Anonymizing customer data on staging',
+                task: async (_ctx: any, task: any): Promise<void> => {
+                    const logger = this.services.getLogger();
+                    task.output = 'Running magerun2 db:anonymize on staging...';
+                    logger.info('Starting db:anonymize on staging');
+
+                    const startTime = Date.now();
+                    const cmd = stagingMagerunCommand('db:anonymize -n', config);
+                    const result = await sshStaging.execCommand(cmd);
+
+                    if (result.code !== 0) {
+                        throw UI.createError(
+                            `db:anonymize on staging failed\n` +
+                            `[TIP] Check that magerun2 supports db:anonymize on the staging server\n` +
+                            `Error: ${result.stderr || result.stdout}`
+                        );
+                    }
+
+                    const elapsed = Math.round((Date.now() - startTime) / 1000);
+                    task.title = `Customer data anonymized on staging (${elapsed}s)`;
+                    logger.info('db:anonymize on staging complete', { elapsed });
+                }
+            });
+        }
 
         // ----------------------------------------------------------------
         // 6. Update base URLs on staging (optional)
