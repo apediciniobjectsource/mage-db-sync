@@ -225,7 +225,7 @@ class DownloadTask {
                 const magerunExists = await ssh
                     .execCommand(
                         sshNavigateToMagentoRootCommand(
-                            'test -e ' + config.serverVariables.magerunFile + ' && echo "EXISTS"',
+                            'test -s ' + config.serverVariables.magerunFile + ' && echo "EXISTS"',
                             config
                         )
                     )
@@ -238,9 +238,15 @@ class DownloadTask {
                     task.output = 'Downloading Magerun from GitHub...';
                     logger.info('Downloading Magerun from GitHub', { file: config.serverVariables.magerunFile });
 
-                    const githubUrl = `https://github.com/jellesiderius/mage-db-sync/raw/refs/heads/master/files/${config.serverVariables.magerunFile}`;
+                    const forkUrl = `https://github.com/jellesiderius/mage-db-sync/raw/refs/heads/master/files/${config.serverVariables.magerunFile}`;
+                    // Official release URL as fallback (file named without version suffix)
+                    const version = config.requirements.magerun2Version;
+                    const officialUrl = `https://github.com/netz98/n98-magerun2/releases/download/${version}/n98-magerun2.phar`;
+                    const escapedTarget = shellEscape(config.serverVariables.magerunFile);
                     const downloadCommand = sshNavigateToMagentoRootCommand(
-                        `curl -fsSL -o ${shellEscape(config.serverVariables.magerunFile)} ${shellEscape(githubUrl)} || wget -q -O ${shellEscape(config.serverVariables.magerunFile)} ${shellEscape(githubUrl)}`,
+                        `curl -fsSL -o ${escapedTarget} ${shellEscape(forkUrl)} || ` +
+                        `curl -fsSL -o ${escapedTarget} ${shellEscape(officialUrl)} || ` +
+                        `wget -q -O ${escapedTarget} ${shellEscape(officialUrl)}`,
                         config
                     );
 
@@ -249,7 +255,7 @@ class DownloadTask {
                     if (downloadResult.code !== 0) {
                         throw UI.createError(
                             `Failed to download Magerun from GitHub\n` +
-                            `URL: ${githubUrl}\n` +
+                            `URL: ${forkUrl} (also tried: ${officialUrl})\n` +
                             `[TIP] Check internet connectivity on the server and that the file exists on GitHub\n` +
                             `Error: ${downloadResult.stderr || downloadResult.stdout}`
                         );

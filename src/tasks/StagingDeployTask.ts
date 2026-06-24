@@ -240,7 +240,7 @@ class StagingDeployTask {
                 const magerunExists = await sshStaging
                     .execCommand(
                         stagingNavigateToMagentoRootCommand(
-                            `test -e ${shellEscape(magerunFile)} && echo "EXISTS"`,
+                            `test -s ${shellEscape(magerunFile)} && echo "EXISTS"`,
                             config
                         )
                     )
@@ -248,16 +248,21 @@ class StagingDeployTask {
 
                 if (!magerunExists) {
                     task.output = 'Downloading magerun2 to staging...';
-                    const githubUrl = `https://github.com/jellesiderius/mage-db-sync/raw/refs/heads/master/files/${magerunFile}`;
+                    const forkUrl = `https://github.com/jellesiderius/mage-db-sync/raw/refs/heads/master/files/${magerunFile}`;
+                    const version = config.requirements.magerun2Version;
+                    const officialUrl = `https://github.com/netz98/n98-magerun2/releases/download/${version}/n98-magerun2.phar`;
+                    const escapedTarget = shellEscape(magerunFile);
                     const dlCmd = stagingNavigateToMagentoRootCommand(
-                        `curl -fsSL -o ${shellEscape(magerunFile)} ${shellEscape(githubUrl)} || wget -q -O ${shellEscape(magerunFile)} ${shellEscape(githubUrl)}`,
+                        `curl -fsSL -o ${escapedTarget} ${shellEscape(forkUrl)} || ` +
+                        `curl -fsSL -o ${escapedTarget} ${shellEscape(officialUrl)} || ` +
+                        `wget -q -O ${escapedTarget} ${shellEscape(officialUrl)}`,
                         config
                     );
                     const dlResult = await sshStaging.execCommand(dlCmd);
                     if (dlResult.code !== 0) {
                         throw UI.createError(
                             `Failed to download magerun2 to staging\n` +
-                            `URL: ${githubUrl}\n` +
+                            `URL: ${forkUrl} (also tried: ${officialUrl})\n` +
                             `[TIP] Check internet connectivity on the staging server\n` +
                             `Error: ${dlResult.stderr || dlResult.stdout}`
                         );
