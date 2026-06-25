@@ -526,6 +526,13 @@ class StagingDeployTask {
                         city       = 'City',
                         postcode   = '00000'`
                 ],
+                [
+                    'sales_order_grid',
+                    `UPDATE sales_order_grid SET
+                        billing_name   = CONCAT('First', entity_id, ' Last', entity_id),
+                        shipping_name  = CONCAT('First', entity_id, ' Last', entity_id),
+                        customer_email = CONCAT(MD5(IFNULL(customer_email, entity_id)), '@example.com')`
+                ],
             ];
 
             this.stagingTasks.push({
